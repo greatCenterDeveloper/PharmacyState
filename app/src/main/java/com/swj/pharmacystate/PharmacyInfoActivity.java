@@ -10,6 +10,9 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
 
+import com.naver.maps.map.MapView;
+import com.naver.maps.map.NaverMapSdk;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
@@ -27,6 +30,8 @@ public class PharmacyInfoActivity extends AppCompatActivity {
     TextView tvSaturdayOpen, tvSaturdayEnd;
     TextView tvSundayOpen, tvSundayEnd;
     TextView tvHolidayOpen, tvHolidayEnd;
+    MapView mapView;
+
     double gpsLatitude;     // 위도
     double gpsLongitude;    // 경도
 
@@ -68,6 +73,7 @@ public class PharmacyInfoActivity extends AppCompatActivity {
         tvSundayEnd = findViewById(R.id.tv_sunday_end);
         tvHolidayOpen = findViewById(R.id.tv_holiday_open);
         tvHolidayEnd = findViewById(R.id.tv_holiday_end);
+        mapView = findViewById(R.id.map);
 
         Intent intent = getIntent();
         PharmacyItem item = (PharmacyItem) intent.getSerializableExtra("item");
@@ -168,29 +174,34 @@ public class PharmacyInfoActivity extends AppCompatActivity {
         gpsLatitude = item.gpsLatitude;
         gpsLongitude = item.gpsLongitude;
 
-        findViewById(R.id.ac_btn_map).setOnClickListener(view -> {
-            // 지도앱을 실행시키는 인텐트
-            Intent mapIntent = new Intent(Intent.ACTION_VIEW);
+        // naver map
+        String naverClientId = getString(R.string.NAVER_CLIENT_ID); // id 가져오기
+        NaverMapSdk.getInstance(this).setClient( //id 등록
+                new NaverMapSdk.NaverCloudPlatformClient(naverClientId));
 
-            // api로 긁어온 데이터에 위도 경도가 없었다면.. 초기값 0.0일 것이므로...
-            if(gpsLatitude == 0.0 && gpsLongitude == 0.0) {
-                Geocoder geocoder = new Geocoder(this, Locale.KOREA);
-
-                String addr = item.roadAddr;
-                if(item.roadAddr == null) addr = item.lotNoAddr;
-
-                try {
-                    List<Address> addresses = geocoder.getFromLocationName(addr, 3);
-                    gpsLatitude = addresses.get(0).getLatitude();
-                    gpsLongitude = addresses.get(0).getLongitude();
-                } catch (IOException e) { throw new RuntimeException(e); }
-            }
-
-            // 지도의 좌표 Uri 생성
-            Uri uri = Uri.parse("geo:" + gpsLatitude + "," + gpsLongitude + "?q=" + gpsLatitude + "," + gpsLongitude + "&z=18.5");
-            mapIntent.setData(uri);
-
-            startActivity(mapIntent);
-        });
+//        findViewById(R.id.ac_btn_map).setOnClickListener(view -> {
+//            // 지도앱을 실행시키는 인텐트
+//            Intent mapIntent = new Intent(Intent.ACTION_VIEW);
+//
+//            // api로 긁어온 데이터에 위도 경도가 없었다면.. 초기값 0.0일 것이므로...
+//            if(gpsLatitude == 0.0 && gpsLongitude == 0.0) {
+//                Geocoder geocoder = new Geocoder(this, Locale.KOREA);
+//
+//                String addr = item.roadAddr;
+//                if(item.roadAddr == null) addr = item.lotNoAddr;
+//
+//                try {
+//                    List<Address> addresses = geocoder.getFromLocationName(addr, 3);
+//                    gpsLatitude = addresses.get(0).getLatitude();
+//                    gpsLongitude = addresses.get(0).getLongitude();
+//                } catch (IOException e) { throw new RuntimeException(e); }
+//            }
+//
+//            // 지도의 좌표 Uri 생성
+//            Uri uri = Uri.parse("geo:" + gpsLatitude + "," + gpsLongitude + "?q=" + gpsLatitude + "," + gpsLongitude + "&z=18.5");
+//            mapIntent.setData(uri);
+//
+//            startActivity(mapIntent);
+//        });
     }
 }
