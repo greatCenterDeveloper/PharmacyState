@@ -1,23 +1,31 @@
 package com.swj.pharmacystate;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
 import android.location.Address;
 import android.location.Geocoder;
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
 
+import com.naver.maps.geometry.LatLng;
+import com.naver.maps.map.CameraPosition;
 import com.naver.maps.map.MapView;
+import com.naver.maps.map.NaverMap;
 import com.naver.maps.map.NaverMapSdk;
+import com.naver.maps.map.OnMapReadyCallback;
+import com.naver.maps.map.UiSettings;
+import com.naver.maps.map.overlay.Marker;
+
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 
-public class PharmacyInfoActivity extends AppCompatActivity {
+public class PharmacyInfoActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     TextView tvName;
     TextView tvTel;
@@ -31,6 +39,7 @@ public class PharmacyInfoActivity extends AppCompatActivity {
     TextView tvSundayOpen, tvSundayEnd;
     TextView tvHolidayOpen, tvHolidayEnd;
     MapView mapView;
+    NaverMap naverMap;
 
     double gpsLatitude;     // 위도
     double gpsLongitude;    // 경도
@@ -73,7 +82,10 @@ public class PharmacyInfoActivity extends AppCompatActivity {
         tvSundayEnd = findViewById(R.id.tv_sunday_end);
         tvHolidayOpen = findViewById(R.id.tv_holiday_open);
         tvHolidayEnd = findViewById(R.id.tv_holiday_end);
-        mapView = findViewById(R.id.map);
+        mapView = findViewById(R.id.mapview);
+
+        mapView.onCreate(savedInstanceState);
+        mapView.getMapAsync(this);
 
         Intent intent = getIntent();
         PharmacyItem item = (PharmacyItem) intent.getSerializableExtra("item");
@@ -174,34 +186,92 @@ public class PharmacyInfoActivity extends AppCompatActivity {
         gpsLatitude = item.gpsLatitude;
         gpsLongitude = item.gpsLongitude;
 
+        // api로 긁어온 데이터에 위도 경도가 없었다면.. 초기값 0.0일 것이므로...
+        if(gpsLatitude == 0.0 && gpsLongitude == 0.0) {
+            Geocoder geocoder = new Geocoder(this, Locale.KOREA);
+
+            String addr = item.roadAddr;
+            if(item.roadAddr == null) addr = item.lotNoAddr;
+
+            try {
+                List<Address> addresses = geocoder.getFromLocationName(addr, 3);
+                gpsLatitude = addresses.get(0).getLatitude();
+                gpsLongitude = addresses.get(0).getLongitude();
+            } catch (IOException e) { throw new RuntimeException(e); }
+        }
+
         // naver map
         String naverClientId = getString(R.string.NAVER_CLIENT_ID); // id 가져오기
         NaverMapSdk.getInstance(this).setClient( //id 등록
                 new NaverMapSdk.NaverCloudPlatformClient(naverClientId));
+    }
 
-//        findViewById(R.id.ac_btn_map).setOnClickListener(view -> {
-//            // 지도앱을 실행시키는 인텐트
-//            Intent mapIntent = new Intent(Intent.ACTION_VIEW);
-//
-//            // api로 긁어온 데이터에 위도 경도가 없었다면.. 초기값 0.0일 것이므로...
-//            if(gpsLatitude == 0.0 && gpsLongitude == 0.0) {
-//                Geocoder geocoder = new Geocoder(this, Locale.KOREA);
-//
-//                String addr = item.roadAddr;
-//                if(item.roadAddr == null) addr = item.lotNoAddr;
-//
-//                try {
-//                    List<Address> addresses = geocoder.getFromLocationName(addr, 3);
-//                    gpsLatitude = addresses.get(0).getLatitude();
-//                    gpsLongitude = addresses.get(0).getLongitude();
-//                } catch (IOException e) { throw new RuntimeException(e); }
-//            }
-//
-//            // 지도의 좌표 Uri 생성
-//            Uri uri = Uri.parse("geo:" + gpsLatitude + "," + gpsLongitude + "?q=" + gpsLatitude + "," + gpsLongitude + "&z=18.5");
-//            mapIntent.setData(uri);
-//
-//            startActivity(mapIntent);
-//        });
+    @Override
+    public void onMapReady(@NonNull NaverMap naverMap) {
+        naverMap.setMapType(NaverMap.MapType.Basic);
+
+        //건물 표시
+        naverMap.setLayerGroupEnabled(NaverMap.LAYER_GROUP_BUILDING, true);
+        naverMap.setIndoorEnabled(false);
+
+        //카메라 세팅
+        CameraPosition cameraPosition = new CameraPosition(new LatLng(gpsLatitude, gpsLongitude), 17.5, 0, 0);
+        naverMap.setCameraPosition(cameraPosition);
+        this.naverMap = naverMap;
+        UiSettings uiSettings = naverMap.getUiSettings();
+
+        //네이버맵 UI 설정. 로고 클릭은 반드시 true 값으로 해야함(정책사항)
+        uiSettings.setCompassEnabled(true);         // 나침반 보이기
+        uiSettings.setLocationButtonEnabled(true);  // 현재 위치 버튼 보이기
+        uiSettings.setLogoClickEnabled(true);       // 네이버 로고 클릭
+        uiSettings.setScrollGesturesEnabled(true);  // 스크롤 제스처
+        uiSettings.setZoomControlEnabled(true);     // 줌 컨트롤 보이기
+        uiSettings.setRotateGesturesEnabled(true);  // 화면 회전 제스처
+
+        Marker marker = new Marker();
+        marker.setPosition(new LatLng(gpsLatitude, gpsLongitude));
+        marker.setMap(naverMap);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        mapView.onStart();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        mapView.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mapView.onPause();
+    }
+
+    @Override
+    protected void onSaveInstanceState(@NotNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        mapView.onSaveInstanceState(outState);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        mapView.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mapView.onDestroy();
+    }
+
+    @Override
+    public void onLowMemory() {
+        super.onLowMemory();
+        mapView.onLowMemory();
     }
 }
