@@ -169,7 +169,8 @@ public class MainActivity extends AppCompatActivity {
 
                 num = 1;
                 for(int i=0; i<items.size(); i++) {
-                    if (items.get(i).businessDay.contains("공휴일")) {
+                    if (items.get(i).businessDay.contains("공휴일") ||
+                        items.get(i).businessDay.contains("연중무휴")) {
                         PharmacyItem item = new PharmacyItem(items.get(i));
                         item.num = num;
                         num++;
